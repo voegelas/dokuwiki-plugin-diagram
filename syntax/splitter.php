@@ -53,7 +53,7 @@ class syntax_plugin_diagram_splitter extends DokuWiki_Syntax_Plugin
 	{
 		return array(
 			'author' => 'Nikita Melnichenko',
-			'date'   => '2009-04-07',
+			'date'   => '2009-07-24',
 			'name'   => 'Diagram plugin, Splitter component',
 			'desc'   => 'Parses diagram content',
 			'url'    => 'http://nikita.melnichenko.name/projects/dokuwiki-diagram/'
@@ -140,6 +140,8 @@ class syntax_plugin_diagram_splitter extends DokuWiki_Syntax_Plugin
 			'plugin_diagram_splitter');
 		$this->Lexer->addPattern('\|[A-Za-z]+=',
 			'plugin_diagram_splitter');
+		$this->Lexer->addPattern('\|[A-Za-z]+\{[^{}]*\}=',
+			'plugin_diagram_splitter');
 		$this->Lexer->addPattern('\|[^|=\n]*',
 			'plugin_diagram_splitter');
 		$this->Lexer->addExitPattern('</'.$this->tag_name.'>',
@@ -166,7 +168,14 @@ class syntax_plugin_diagram_splitter extends DokuWiki_Syntax_Plugin
 			{
 				$res['type'] = 'abbr eval';
 				// delete first '|', last '=' and whitespase
-				$res['abbr'] = trim(substr($match, 1, -1));
+				$abbr_and_params = trim(substr($match, 1, -1));
+				if (preg_match ('/([A-Za-z]+)\{([^{}]*)\}/', $abbr_and_params, $regs))
+				{
+					$res['abbr'] = $regs[1];
+					$res['params'] = $regs[2];
+				}
+				else
+					$res['abbr'] = $abbr_and_params;
 			}
 			else
 			{
