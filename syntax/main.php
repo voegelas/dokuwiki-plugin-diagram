@@ -42,6 +42,20 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	 * @staticvar string
 	 */
 	var $tag_name_splitter = '_diagram_';
+	
+	/**
+	 * Default parameters for abbreviation block.
+	 *
+	 * @staticvar string
+	 */
+	var $default_abbr_params = array(
+		'border-width' => '2px',
+		'border-style' => 'solid',
+		'border-color' => 'black',
+		'background-color' => null,
+		'text-align' => 'center',
+		'padding' => '0.25em',
+		);
 
 	/**
 	 * Get general information.
@@ -60,7 +74,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	{
 		return array(
 			'author' => 'Nikita Melnichenko',
-			'date'   => '2009-07-24',
+			'date'   => '2009-08-11',
 			'name'   => 'Diagram plugin, Main component',
 			'desc'   => 'Constructs diagrams',
 			'url'    => 'http://nikita.melnichenko.name/projects/dokuwiki-diagram/'
@@ -246,10 +260,9 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 			{
 				$abbr_met = true;
 				$abbrs[$line_index][$data['abbr']]['content'] = array();
-				$abbrs[$line_index][$data['abbr']]['params'] = array(
-					'border-color' => 'black',
-					'background-color' => null
-					);
+				// set defaults for each available parameter
+				$abbrs[$line_index][$data['abbr']]['params'] = $this->default_abbr_params;
+				// override some parameters by user values
 				if (isset ($data['params']))
 				{
 					$params = explode(';', $data['params']);
@@ -258,15 +271,22 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 						list ($key, $value) = explode(':', $param);
 						$key = trim ($key);
 						$value = trim ($value);
+						$is_valid = false;
 						switch ($key)
 						{
 							case 'border-color':
 							case 'background-color':
-								if (!$this->_validateCSSColor ($value))
-									break;
-								$abbrs[$line_index][$data['abbr']]['params'][$key] = $value;
+								$is_valid = $this->_validateCSSColor ($value);
+								break;
+							case 'text-align':
+								$is_valid = $this->_validateCSSTextAlign ($value);
+								break;
+							case 'padding':
+								$is_valid = $this->_validateCSSPadding ($value);
 								break;
 						}
+						if ($is_valid)
+							$abbrs[$line_index][$data['abbr']]['params'][$key] = $value;
 					}
 				}
 				$catching_abbr = &$abbrs[$line_index][$data['abbr']]['content'];
@@ -824,12 +844,9 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	 */
 	function _boxCell ($width, $height, $abbr)
 	{
-		$style = "text-align: center; padding: 0.25em; ";
-
 		return array(
 			"colspan" => $width,
 			"rowspan" => $height,
-			"style" => $style,
 			"abbr" => $abbr
 			);
 	}
@@ -896,18 +913,13 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 				else if (array_key_exists($line_index, $abbrs) && array_key_exists($cell['abbr'], $abbrs[$line_index]))
 				{
 					$cell_content = $this->_renderWikiCalls ($abbrs[$line_index][$cell['abbr']]['content']);
-					// update style using abbreviation parameters
-					$border_color = $abbrs[$line_index][$cell['abbr']]['params']['border-color'];
-					$background_color = $abbrs[$line_index][$cell['abbr']]['params']['background-color'];
-					$cell["style"] .= "border: 2px solid $border_color;"
-						.(!is_null($background_color) ? " background-color: $background_color;" : '');
-
+					$cell["style"] = $this->_generateBlockStyle ($abbrs[$line_index][$cell['abbr']]['params']);
 				}
 				// cell with unrecognized abbreviation
 				else
 				{
 					$cell_content = $cell['abbr'];
-					$cell["style"] .= "border: 2px solid black;";
+					$cell["style"] = $this->_generateBlockStyle ($this->default_abbr_params);
 				}
 
 				// output td
@@ -924,6 +936,21 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 		$table .= "</table>\n";
 
 		return $table;
+	}
+
+	/**
+	 * Generate CSS style for abbreviation block.
+	 *
+	 * @param array $params supported block parameters
+	 * @return string css style
+	 * @see default_abbr_params for list of supported block parameters
+	 */
+	function _generateBlockStyle ($params)
+	{
+		return "text-align: {$params['text-align']};"
+			." padding: {$params['padding']};"
+			." border: {$params['border-width']} {$params['border-style']} {$params['border-color']};"
+			.(!is_null($params['background-color']) ? " background-color: {$params['background-color']};" : '');
 	}
 
 	/**
@@ -958,6 +985,30 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 		if (ereg("^rgb\([ ]*[0-9]{1,3}[ ]*,[ ]*[0-9]{1,3}[ ]*,[ ]*[0-9]{1,3}[ ]*\)$", $color))
 			return true;
 		if (ereg("^rgb\([ ]*[0-9]{1,3}%[ ]*,[ ]*[0-9]{1,3}%[ ]*,[ ]*[0-9]{1,3}%[ ]*\)$", $color))
+			return true;
+		return false;
+	}
+
+	/**
+	 * Check if given value is proper for css text-align.
+	 *
+	 * @param string $value checked string
+	 * @return true, if string is good as a value for css text-align
+	 */
+	function _validateCSSTextAlign ($value)
+	{
+		return $value == 'center' || $value == 'justify' || $value == 'left' || $value == 'right';
+	}
+
+	/**
+	 * Check if given value is proper for css padding.
+	 *
+	 * @param string $value checked string
+	 * @return true, if string is good as a value for css padding
+	 */
+	function _validateCSSPadding ($value)
+	{
+		if (ereg("^((auto|[0-9]+px|[0-9]+%|[0-9]+em)[ ]*){1,4}$", $value))
 			return true;
 		return false;
 	}
