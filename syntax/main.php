@@ -13,6 +13,9 @@
  * @license GPL 2 (http://www.gnu.org/licenses/gpl.html)
  * @author Nikita Melnichenko [http://nikita.melnichenko.name]
  * @copyright Copyright 2007-2009, Nikita Melnichenko
+ *
+ * Thanks for help to:
+ * - Anika Henke <anika[at]selfthinker.org>
  */
 
 // includes
@@ -42,7 +45,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	 * @staticvar string
 	 */
 	var $tag_name_splitter = '_diagram_';
-	
+
 	/**
 	 * Default parameters for abbreviation block.
 	 *
@@ -74,7 +77,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	{
 		return array(
 			'author' => 'Nikita Melnichenko',
-			'date'   => '2009-08-11',
+			'date'   => '2009-11-11',
 			'name'   => 'Diagram plugin, Main component',
 			'desc'   => 'Constructs diagrams',
 			'url'    => 'http://nikita.melnichenko.name/projects/dokuwiki-diagram/'
@@ -106,8 +109,8 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	 */
 	function getPType ()
 	{
-		// table can be put inside paragraphs
-		return 'normal';
+		// table cannot be put inside paragraphs
+		return 'block';
 	}
 
 	/**
@@ -888,7 +891,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	function _renderDiagram ($framework, $abbrs)
 	{
 		// output table
-		$table = '<table style="border-spacing: 0px; border: 0px;">'."\n";
+		$table = '<table class="diagram" style="border-spacing: 0px; border: 0px;">'."\n";
 		for ($i = 0; $i < 2 * $framework['line_count']; $i++)
 		{
 			// get table row spec
@@ -908,7 +911,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 						.$cell["colspan"]
 						.'em; height: '
 						.$cell["rowspan"]
-						.'em;"><span>&nbsp;</span></div>';
+						.'em;"></div>';
 				// cell with abbreviation
 				else if (array_key_exists($line_index, $abbrs) && array_key_exists($cell['abbr'], $abbrs[$line_index]))
 				{
@@ -931,6 +934,9 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					.$cell_content
 					."</td>\n";
 			}
+			// prevent empty tr tag
+			if (!count($row))
+				$table .= "\t\t<td></td>\n";
 			$table .= "\t</tr>\n";
 		}
 		$table .= "</table>\n";
