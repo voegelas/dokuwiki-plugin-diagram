@@ -77,7 +77,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	{
 		return array(
 			'author' => 'Nikita Melnichenko',
-			'date'   => '2010-01-11',
+			'date'   => '2010-02-05',
 			'name'   => 'Diagram plugin, Main component',
 			'desc'   => 'Constructs diagrams',
 			'url'    => 'http://nikita.melnichenko.name/projects/dokuwiki-diagram/index.php'
@@ -816,6 +816,48 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1, null, $border_cd);
 						$res[$ir + 1][$jr] = $this->_connectionCell(1, 1, $border_cs, null);
 						$res[$ir + 1][$jr + 1] = $this->_connectionCell(1, 1);
+
+						$jr += 2;
+						break;
+
+					// +     +     +
+					//
+					//
+					//
+					//
+					//
+					// +-----+-----+
+					//       |
+					//
+					//       |
+					//
+					//       |
+					// +     +     +
+					case "p":
+						$res[$ir][$jr] = $this->_connectionCell(2, 1, null, $border_cs);
+						$res[$ir + 1][$jr] = $this->_connectionCell(1, 1, $border_cd, null);
+						$res[$ir + 1][$jr + 1] = $this->_connectionCell(1, 1);
+
+						$jr += 2;
+						break;
+
+					// +     +     +
+					//       |
+					//
+					//       |
+					//
+					//       |
+					// +-----+-----+
+					//
+					//
+					//
+					//
+					//
+					// +     +     +
+					case "b":
+						$res[$ir][$jr] = $this->_connectionCell(1, 1, $border_cd, $border_cs);
+						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1, null, $border_cs);
+						$res[$ir + 1][$jr] = $this->_connectionCell(2, 1);
 
 						$jr += 2;
 						break;
