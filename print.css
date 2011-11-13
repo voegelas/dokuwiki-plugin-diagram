@@ -1,0 +1,163 @@
+/* --- general --- */
+
+table.diagram
+{
+	border-spacing: 0px;
+	border: 0px;
+}
+
+table.diagram td
+{
+	padding: 0px;
+}
+
+/* --- spacers --- */
+
+table.diagram td.d-sh div
+{
+	width: 1em;
+	height: 0px;
+}
+
+table.diagram td.d-sv div
+{
+	width: 0px;
+	height: 1em;
+}
+
+/* --- borders (connection lines) --- */
+
+table.diagram td.d-b
+{
+	border-width: 2px;
+	border-style: solid;
+	border-color: black;
+	text-align: center;
+	padding: 0.25em;
+}
+
+table.diagram td.d-brs
+{
+	border-right: 1px solid black;
+}
+
+table.diagram td.d-brd
+{
+	border-right: 1px dashed black;
+}
+
+table.diagram td.d-bbs
+{
+	border-bottom: 1px solid black;
+}
+
+table.diagram td.d-bbd
+{
+	border-bottom: 1px dashed black;
+}
+
+/* --- arrows --- */
+
+/* top direction */
+
+table.diagram td.d-at
+{
+	vertical-align: top;
+}
+
+table.diagram td.d-at div
+{
+	width: 11px;
+	height: 25px;
+	background: url(images/black-curved/arrowhead-up.png) no-repeat center top;
+	position: relative;
+	right: 6px;
+}
+
+table.diagram td.d-at.d-ai
+{
+	vertical-align: bottom;
+}
+
+table.diagram td.d-at.d-ai div
+{
+	background: url(images/black-curved/arrowhead-down.png) no-repeat center bottom;
+}
+
+/* right direction */
+
+table.diagram td.d-ar
+{
+	vertical-align: top;
+}
+
+table.diagram td.d-ar div
+{
+	width: 25px;
+	height: 11px;
+	background: url(images/black-curved/arrowhead-right.png) no-repeat right center;
+	position: relative;
+	bottom: 6px;
+	margin-left: auto;
+	margin-right: 0px;
+}
+
+table.diagram td.d-ar.d-ai div
+{
+	background: url(images/black-curved/arrowhead-left.png) no-repeat left center;
+	margin-left: 0px;
+	margin-right: auto;
+}
+
+/* bottom direction */
+
+table.diagram td.d-ab
+{
+	vertical-align: bottom;
+}
+
+table.diagram td.d-ab div
+{
+	width: 11px;
+	height: 25px;
+	background: url(images/black-curved/arrowhead-down.png) no-repeat center bottom;
+	position: relative;
+	left: 6px;
+	margin-left: auto;
+	margin-right: 0px;
+}
+
+table.diagram td.d-ab.d-ai
+{
+	vertical-align: top;
+}
+
+table.diagram td.d-ab.d-ai div
+{
+	background: url(images/black-curved/arrowhead-up.png) no-repeat center top;
+}
+
+/* left direction */
+
+table.diagram td.d-al
+{
+	vertical-align: bottom;
+}
+
+table.diagram td.d-al div
+{
+	width: 25px;
+	height: 11px;
+	background: url(images/black-curved/arrowhead-left.png) no-repeat left center;
+	position: relative;
+	top: 6px;
+	margin-left: 0px;
+	margin-right: auto;
+}
+
+table.diagram td.d-al.d-ai div
+{
+	background: url(images/black-curved/arrowhead-right.png) no-repeat right center;
+	margin-left: auto;
+	margin-right: 0px;
+}

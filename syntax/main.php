@@ -5,14 +5,14 @@
  * Constructs diagrams.
  * See full description at http://nikita.melnichenko.name/projects/dokuwiki-diagram/.
  *
- * Tested with DokuWiki-20090214. Should also work with 20091225, 20080505 and 20070626 releases.
- * Doesn't operate properly with 20061106 release due to its bugs.
+ * Should work with any DokuWiki version >= 20070626.
+ * Tested with DokuWiki versions 20090214, 20091225, 20110525a.
  *
  * Install to lib/plugins/diagram/syntax/main.php.
  *
  * @license GPL 2 (http://www.gnu.org/licenses/gpl.html)
  * @author Nikita Melnichenko [http://nikita.melnichenko.name]
- * @copyright Copyright 2007-2010, Nikita Melnichenko
+ * @copyright Copyright 2007-2011, Nikita Melnichenko
  *
  * Thanks for help to:
  * - Anika Henke <anika[at]selfthinker.org>
@@ -46,18 +46,23 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	 */
 	var $tag_name_splitter = '_diagram_';
 
-	/**
-	 * Default parameters for abbreviation block.
-	 *
-	 * @staticvar string
-	 */
-	var $default_abbr_params = array(
-		'border-width' => '2px',
-		'border-style' => 'solid',
-		'border-color' => 'black',
-		'background-color' => null,
-		'text-align' => 'center',
-		'padding' => '0.25em',
+	var $css_classes = array(
+		/* spacers */
+		'spacer-horizontal' => 'd-sh',
+		'spacer-vertical' => 'd-sv',
+		/* block */
+		'block' => 'd-b',
+		/* connection borders */
+		'border-right-solid' => 'd-brs',
+		'border-right-dashed' => 'd-brd',
+		'border-bottom-solid' => 'd-bbs',
+		'border-bottom-dashed' => 'd-bbd',
+		/* arrow directions */
+		'arrow-top' => 'd-at',
+		'arrow-right' => 'd-ar',
+		'arrow-bottom' => 'd-ab',
+		'arrow-left' => 'd-al',
+		'arrow-inside' => 'd-ai'
 		);
 
 	/**
@@ -77,8 +82,8 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	{
 		return array(
 			'author' => 'Nikita Melnichenko',
-			'date'   => '2010-02-05',
-			'name'   => 'Diagram plugin, Main component',
+			'date'   => '2011-11-14',
+			'name'   => 'Diagram plugin, Main component (experimental branch)',
 			'desc'   => 'Constructs diagrams',
 			'url'    => 'http://nikita.melnichenko.name/projects/dokuwiki-diagram/index.php'
 			);
@@ -188,6 +193,12 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	/**
 	 * Compose commands and abbreviations from wiki calls.
 	 *
+	 * Supported abbreviation parameters:
+	 * - border-color (CSS property)
+	 * - background-color (CSS property)
+	 * - text-align (CSS property)
+	 * - padding (CSS property)
+	 *
 	 * @param array $calls DokuWiki calls
 	 * @return array array($commands, $abbreviations)
 	 */
@@ -263,8 +274,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 			{
 				$abbr_met = true;
 				$abbrs[$line_index][$data['abbr']]['content'] = array();
-				// set defaults for each available parameter
-				$abbrs[$line_index][$data['abbr']]['params'] = $this->default_abbr_params;
+				$abbrs[$line_index][$data['abbr']]['params'] = array();
 				// override some parameters by user values
 				if (isset ($data['params']))
 				{
@@ -318,7 +328,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 			// because last delimiter is a 'border' of the table
 			// do not care, if someone specified garbage after last delimiter
 			if ($line_length > 0 && !array_key_exists($i, $abbrs))
-				unset($commands[$i][$line_length]);
+				unset($commands[$i][$line_length - 1]);
 		}
 
 		return array($commands, $abbrs);
@@ -328,12 +338,13 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	 * Generate table's framework.
 	 *
 	 * Framework: array(row number => array (column number => cell spec))
-	 *   + array('line_count' => total line count).
+	 *   + array('n_rows' => number of rows, 'n_cols' => number of columns).
 	 * cell_spec: array(
-	 *   "colspan" => colspan,
-	 *   "rowspan" => rowspan,
-	 *   "style" => style (or null),
-	 *   "abbr" => abbr string (or null)
+	 *   'colspan' => colspan (optional),
+	 *   'rowspan' => rowspan (optional),
+	 *   'classes' => array(css class),
+	 *   'text' => text for diagram block or abbreviation (optional),
+	 *   'content' => raw xhtml code to paste into cell, if 'text' key isn't set (optional)
 	 *   ).
 	 *
 	 * @author Nikita Melnichenko [http://nikita.melnichenko.name]
@@ -344,31 +355,28 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	 */
 	function _genFramework ($commands)
 	{
-		// internal settings
-		// solid border for connection cell
-		$border_cs = '1px solid black';
-		// dashed border for connection cell
-		$border_cd = '1px dashed black';
+		// store number of rows
+		$res['n_rows'] = count($commands) * 2;
+		// number of columns is computed below
+		$res['n_cols'] = 0;
 
-		// store line count that is used for proper table generation
-		$res['line_count'] = count($commands);
-
-		for ($i = 0, $ir = 0; $i < $res['line_count']; $i++, $ir += 2)
+		for ($i = 0, $ir = 0; $i < count($commands); $i++, $ir += 2)
 		{
 			for ($j = 0, $jr = 0; $j < count($commands[$i]); $j++)
 			{
-				// leading and trailing spaces ignored (deprecated)
-				$cell_text = trim($commands[$i][$j]);
-				// flag for solid lines in connection cell
-				$solid_lines = 0;
+				// leading and trailing spaces are already ignored by splitter component
+				$cell_text = $commands[$i][$j];
+				// split command to connection and arrow commands
+				list($conn_command, $arrow_command) = $this->_splitCommand($cell_text);
+				// 2x2 connection specs for current command
+				$conn_cells = null;
 
-				switch ($cell_text)
+				switch ($conn_command)
 				{
 					// === empty ===
 
 					case "":
-						$res[$ir][$jr] = $this->_connectionCell(2, 2);
-						$jr +=2;
+						$conn_cells = $this->_connectionCells('nnnn', $arrow_command);
 						break;
 
 					// === solid or dashed lines ===
@@ -387,16 +395,10 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case ",":
-						$solid_lines = 1;
+						$conn_cells = $this->_connectionCells('nssn', $arrow_command);
+						break;
 					case "F":
-						$border = $solid_lines ? $border_cs : $border_cd;
-
-						$res[$ir][$jr] = $this->_connectionCell(1, 1);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1, null, $border);
-						$res[$ir + 1][$jr] = $this->_connectionCell(1, 1, $border, null);
-						$res[$ir + 1][$jr + 1] = $this->_connectionCell(1, 1);
-
-						$jr +=2;
+						$conn_cells = $this->_connectionCells('nddn', $arrow_command);
 						break;
 
 					// +     +     +
@@ -413,15 +415,10 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case ".":
-						$solid_lines = 1;
+						$conn_cells = $this->_connectionCells('nnss', $arrow_command);
+						break;
 					case "7":
-						$border = $solid_lines ? $border_cs : $border_cd;
-
-						$res[$ir][$jr] = $this->_connectionCell(1, 1, null, $border);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 2);
-						$res[$ir + 1][$jr] = $this->_connectionCell(1, 1, $border, null);
-
-						$jr +=2;
+						$conn_cells = $this->_connectionCells('nndd', $arrow_command);
 						break;
 
 					// +     +     +
@@ -438,15 +435,10 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case "v":
-						$solid_lines = 1;
+						$conn_cells = $this->_connectionCells('nsss', $arrow_command);
+						break;
 					case "V":
-						$border = $solid_lines ? $border_cs : $border_cd;
-
-						$res[$ir][$jr] = $this->_connectionCell(2, 1, null, $border);
-						$res[$ir + 1][$jr] = $this->_connectionCell(1, 1, $border, null);
-						$res[$ir + 1][$jr + 1] = $this->_connectionCell(1, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('nddd', $arrow_command);
 						break;
 
 					// +     +     +
@@ -463,14 +455,10 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case "!":
-						$solid_lines = 1;
+						$conn_cells = $this->_connectionCells('snsn', $arrow_command);
+						break;
 					case ":":
-						$border = $solid_lines ? $border_cs : $border_cd;
-
-						$res[$ir][$jr] = $this->_connectionCell(1, 2, $border, null);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 2);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('dndn', $arrow_command);
 						break;
 
 					// +     +     +
@@ -487,16 +475,10 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case "+":
-						$solid_lines = 1;
+						$conn_cells = $this->_connectionCells('ssss', $arrow_command);
+						break;
 					case "%":
-						$border = $solid_lines ? $border_cs : $border_cd;
-
-						$res[$ir][$jr] = $this->_connectionCell(1, 1, $border, $border);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1, null, $border);
-						$res[$ir + 1][$jr] = $this->_connectionCell(1, 1, $border, null);
-						$res[$ir + 1][$jr + 1] = $this->_connectionCell(1, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('dddd', $arrow_command);
 						break;
 
 					// +     +     +
@@ -513,14 +495,10 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//
 					// +     +     +
 					case "-":
-						$solid_lines = 1;
+						$conn_cells = $this->_connectionCells('nsns', $arrow_command);
+						break;
 					case "~":
-						$border = $solid_lines ? $border_cs : $border_cd;
-
-						$res[$ir][$jr] = $this->_connectionCell(2, 1, null, $border);
-						$res[$ir + 1][$jr] = $this->_connectionCell(2, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('ndnd', $arrow_command);
 						break;
 
 					// +     +     +
@@ -537,15 +515,10 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//
 					// +     +     +
 					case "`":
-						$solid_lines = 1;
+						$conn_cells = $this->_connectionCells('ssnn', $arrow_command);
+						break;
 					case "L":
-						$border = $solid_lines ? $border_cs : $border_cd;
-
-						$res[$ir][$jr] = $this->_connectionCell(1, 1, $border, null);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1,  null, $border);
-						$res[$ir + 1][$jr] = $this->_connectionCell(2, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('ddnn', $arrow_command);
 						break;
 
 					// +     +     +
@@ -562,15 +535,10 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//
 					// +     +     +
 					case "'":
-						$solid_lines = 1;
+						$conn_cells = $this->_connectionCells('snns', $arrow_command);
+						break;
 					case "J":
-						$border = $solid_lines ? $border_cs : $border_cd;
-
-						$res[$ir][$jr] = $this->_connectionCell(1, 1, $border, $border);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1);
-						$res[$ir + 1][$jr] = $this->_connectionCell(2, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('dnnd', $arrow_command);
 						break;
 
 					// +     +     +
@@ -587,15 +555,10 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//
 					// +     +     +
 					case "^":
-						$solid_lines = 1;
+						$conn_cells = $this->_connectionCells('ssns', $arrow_command);
+						break;
 					case "A":
-						$border = $solid_lines ? $border_cs : $border_cd;
-
-						$res[$ir][$jr] = $this->_connectionCell(1, 1, $border, $border);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1, null, $border);
-						$res[$ir + 1][$jr] = $this->_connectionCell(2, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('ddnd', $arrow_command);
 						break;
 
 					// +     +     +
@@ -612,15 +575,10 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case "(":
-						$solid_lines = 1;
+						$conn_cells = $this->_connectionCells('snss', $arrow_command);
+						break;
 					case "C":
-						$border = $solid_lines ? $border_cs : $border_cd;
-
-						$res[$ir][$jr] = $this->_connectionCell(1, 1, $border, $border);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 2);
-						$res[$ir + 1][$jr] = $this->_connectionCell(1, 1, $border, null);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('dndd', $arrow_command);
 						break;
 
 					// +     +     +
@@ -637,15 +595,10 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case ")":
-						$solid_lines = 1;
+						$conn_cells = $this->_connectionCells('sssn', $arrow_command);
+						break;
 					case "D":
-						$border = $solid_lines ? $border_cs : $border_cd;
-
-						$res[$ir][$jr] = $this->_connectionCell(1, 2, $border, null);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1, null, $border);
-						$res[$ir + 1][$jr + 1] = $this->_connectionCell(1, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('dddn', $arrow_command);
 						break;
 
 					// === mixed lines ===
@@ -664,11 +617,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case "y":
-						$res[$ir][$jr] = $this->_connectionCell(2, 1, null, $border_cd);
-						$res[$ir + 1][$jr] = $this->_connectionCell(1, 1, $border_cs, null);
-						$res[$ir + 1][$jr + 1] = $this->_connectionCell(1, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('ndsd', $arrow_command);
 						break;
 
 					// +     +     +
@@ -685,12 +634,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case "*":
-						$res[$ir][$jr] = $this->_connectionCell(1, 1, $border_cd, $border_cs);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1, null, $border_cs);
-						$res[$ir + 1][$jr] = $this->_connectionCell(1, 1, $border_cd, null);
-						$res[$ir + 1][$jr + 1] = $this->_connectionCell(1, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('dsds', $arrow_command);
 						break;
 
 					// +     +     +
@@ -707,11 +651,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case "}":
-						$res[$ir][$jr] = $this->_connectionCell(1, 2, $border_cd, null);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1, null, $border_cs);
-						$res[$ir + 1][$jr + 1] = $this->_connectionCell(1, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('dsdn', $arrow_command);
 						break;
 
 					// +     +     +
@@ -728,11 +668,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case "{":
-						$res[$ir][$jr] = $this->_connectionCell(1, 1, $border_cd, $border_cs);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 2);
-						$res[$ir + 1][$jr] = $this->_connectionCell(1, 1, $border_cd, null);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('dnds', $arrow_command);
 						break;
 
 					// +     +     +
@@ -749,11 +685,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case "]":
-						$res[$ir][$jr] = $this->_connectionCell(1, 2, $border_cs, null);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1, null, $border_cd);
-						$res[$ir + 1][$jr + 1] = $this->_connectionCell(1, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('sdsn', $arrow_command);
 						break;
 
 					// +     +     +
@@ -770,11 +702,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case "[":
-						$res[$ir][$jr] = $this->_connectionCell(1, 1, $border_cs, $border_cd);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 2);
-						$res[$ir + 1][$jr] = $this->_connectionCell(1, 1, $border_cs, null);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('snsd', $arrow_command);
 						break;
 
 					// +     +     +
@@ -791,11 +719,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//
 					// +     +     +
 					case "h":
-						$res[$ir][$jr] = $this->_connectionCell(1, 1, $border_cs, $border_cd);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1, null, $border_cd);
-						$res[$ir + 1][$jr] = $this->_connectionCell(2, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('sdnd', $arrow_command);
 						break;
 
 					// +     +     +
@@ -812,12 +736,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case "#":
-						$res[$ir][$jr] = $this->_connectionCell(1, 1, $border_cs, $border_cd);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1, null, $border_cd);
-						$res[$ir + 1][$jr] = $this->_connectionCell(1, 1, $border_cs, null);
-						$res[$ir + 1][$jr + 1] = $this->_connectionCell(1, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('sdsd', $arrow_command);
 						break;
 
 					// +     +     +
@@ -834,11 +753,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//       |
 					// +     +     +
 					case "p":
-						$res[$ir][$jr] = $this->_connectionCell(2, 1, null, $border_cs);
-						$res[$ir + 1][$jr] = $this->_connectionCell(1, 1, $border_cd, null);
-						$res[$ir + 1][$jr + 1] = $this->_connectionCell(1, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('nsds', $arrow_command);
 						break;
 
 					// +     +     +
@@ -855,24 +770,57 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 					//
 					// +     +     +
 					case "b":
-						$res[$ir][$jr] = $this->_connectionCell(1, 1, $border_cd, $border_cs);
-						$res[$ir][$jr + 1] = $this->_connectionCell(1, 1, null, $border_cs);
-						$res[$ir + 1][$jr] = $this->_connectionCell(2, 1);
-
-						$jr += 2;
+						$conn_cells = $this->_connectionCells('dsns', $arrow_command);
 						break;
 
 					// === box ===
 
 					default:
 						$res[$ir][$jr] = $this->_boxCell(6, 2, $cell_text);
-
 						$jr += 6;
 				}
+
+				// apply connection cells to the result
+				if (!is_null($conn_cells))
+				{
+					// we must have a proper order of creation of elements of framework, do not use list() here
+					$res[$ir][$jr] = $conn_cells[0];
+					$res[$ir][$jr + 1] = $conn_cells[1];
+					$res[$ir + 1][$jr] = $conn_cells[2];
+					$res[$ir + 1][$jr + 1] = $conn_cells[3];
+					$jr += 2;
+				}
 			}
+
+			// compute number of columns
+			if ($res['n_cols'] < $jr)
+				$res['n_cols'] = $jr;
 		}
 
 		return $res;
+	}
+
+	/**
+	 * Split command to connection part and arrow part.
+	 *
+	 * @param string $command
+	 * @return array array($connection_command, $arrow_command)
+	 */
+	function _splitCommand ($command)
+	{
+		$command_parts = explode('@', $command, 2);
+		if (!isset($command_parts[1]) || !preg_match("/^[0-9a-f]{1,2}$/i", $command_parts[1]))
+			$command_parts[1] = 0;
+		else
+		{
+			// convert to bits: 'a' -> '0xa', 'ab' -> '0xba'
+			// see docs and params of _connectionCells
+			$v = $command_parts[1];
+			if (strlen($v) == 2)
+				$v = $v[1].$v[0];
+			$command_parts[1] = intval($v, 16);
+		}
+		return $command_parts;
 	}
 
 	/**
@@ -882,45 +830,134 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	 *
 	 * @param integer $width colspan
 	 * @param integer $height rowspan
-	 * @param string $abbr abbreviation
+	 * @param string $text box text or abbreviation
 	 * @param string $border css border
 	 * @param string $background_color css color
 	 * @return array cell spec
 	 */
-	function _boxCell ($width, $height, $abbr)
+	function _boxCell ($width, $height, $text)
 	{
 		return array(
-			"colspan" => $width,
-			"rowspan" => $height,
-			"abbr" => $abbr
+			'colspan' => $width,
+			'rowspan' => $height,
+			'classes' => array($this->css_classes['block']),
+			'text' => $text
 			);
 	}
 
 	/**
-	 * Generate connection cell.
+	 * Generate 2x2 pattern of connections cells.
 	 *
-	 * Connection cell provides connection lines using its borders.
+	 * Each connection cell provides connection lines using its borders.
+	 * They could also contain divs with arrowheads.
 	 *
-	 * @param integer $width colspan
-	 * @param integer $height rowspan
-	 * @param string $border_right css border
-	 * @param string $border_bottom css border
-	 * @return array cell spec
+	 * @param string $border_spec 4 chars containing line type in top, right, bottom, left directions;
+	 *   line type chars are: 's' for solid, 'd' for dashed, 'n' for no line
+	 * @param int $arrow_spec 8 bits are used:
+	 *   the first 4 bits indicate if arrow exists (=1) or not (=0) in top, right, bottom, left directions,
+	 *   the next 4 bits indicate if arrowhead look inside (=1) or outside (=0) in top, right, bottom, left directions,
+	 * @return array array(cell_{0,0}, cell_{0,1}, cell_{1,0}, cell_{1,1})
 	 */
-	function _connectionCell ($width, $height, $border_right = null, $border_bottom = null)
+	function _connectionCells ($border_spec, $arrow_spec)
 	{
-		$style = "";
-		if (!is_null($border_right))
-			$style .= "border-right: $border_right;";
-		if (!is_null($border_bottom))
-			$style .= ($style ? ' ' : '')."border-bottom: $border_bottom;";
+		// direction numbers: top (0), right (1), bottom (2), left (3)
+		// cell numbers: {0,0} -> 0, {0,1} -> 1, {1,0} -> 2, {1,1} -> 3
+		// +     +     +
+		//       |
+		//
+		// cell  0  cell
+		//  0        1
+		//       |
+		// +- 3 -+- 1 -+
+		//       |
+		//
+		// cell  2  cell
+		//  2        3
+		//       |
+		// +     +     +
 
-		return array(
-			"colspan" => $width,
-			"rowspan" => $height,
-			"style" => $style,
-			"abbr" => null
-			);
+		// init
+		for ($i = 0; $i < 4; $i++)
+			$cells[$i] = array('classes' => array());
+
+		// fill borders
+		if ($border_spec[0] != 'n')
+			$cells[0]['classes'][] = $this->_borderClass($border_spec[0], 'right');
+		if ($border_spec[1] != 'n')
+			$cells[1]['classes'][] = $this->_borderClass($border_spec[1], 'bottom');
+		if ($border_spec[2] != 'n')
+			$cells[2]['classes'][] = $this->_borderClass($border_spec[2], 'right');
+		if ($border_spec[3] != 'n')
+			$cells[0]['classes'][] = $this->_borderClass($border_spec[3], 'bottom');
+
+		// div elements with arrows, direction to cell number mapping
+		// 0 -> 1, 1 -> 3. 2 -> 2, 3 -> 0
+		// +     +     +
+		//       |
+		//
+		//    0  0>>1
+		//    ^
+		//    ^  |
+		// +- 3 -+- 1 -+
+		//       |  v
+		//          v
+		//    2<<2  3
+		//
+		//       |
+		// +     +     +
+
+		// fill primary arrow classes
+		if ($arrow_spec & (1 << 0))
+		{
+			$cells[1]['classes'][] = $this->css_classes['arrow-top'];
+			$cells[1]['content'] = '<div />';
+		}
+		if ($arrow_spec & (1 << 1))
+		{
+			$cells[3]['classes'][] = $this->css_classes['arrow-right'];
+			$cells[3]['content'] = '<div />';
+		}
+		if ($arrow_spec & (1 << 2))
+		{
+			$cells[2]['classes'][] = $this->css_classes['arrow-bottom'];
+			$cells[2]['content'] = '<div />';
+		}
+		if ($arrow_spec & (1 << 3))
+		{
+			$cells[0]['classes'][] = $this->css_classes['arrow-left'];
+			$cells[0]['content'] = '<div />';
+		}
+		// fill arrowhead direction
+		if ($arrow_spec & (1 << (0 + 4)))
+			$cells[1]['classes'][] = $this->css_classes['arrow-inside'];
+		if ($arrow_spec & (1 << (1 + 4)))
+			$cells[3]['classes'][] = $this->css_classes['arrow-inside'];
+		if ($arrow_spec & (1 << (2 + 4)))
+			$cells[2]['classes'][] = $this->css_classes['arrow-inside'];
+		if ($arrow_spec & (1 << (3 + 4)))
+			$cells[0]['classes'][] = $this->css_classes['arrow-inside'];
+
+		// clear
+		for ($i = 0; $i < 4; $i++)
+			if (empty($cells[$i]['classes']))
+				unset($cells[$i]['classes']);
+
+		return $cells;
+	}
+
+	/**
+	 * Generate border CSS class for connection cell.
+	 *
+	 * @param string $type 's' for solid, 'd' for dashed
+	 * @param string $direction 'right'or 'bottom'
+	 * @return string class name
+	 */
+	function _borderClass ($type, $direction)
+	{
+		if ($type != 's' && $type != 'd')
+			return 'error';
+		$key = "border-$direction-".($type == 's' ? 'solid' : 'dashed');
+		return $this->css_classes[$key];
 	}
 
 	/**
@@ -932,9 +969,19 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	 */
 	function _renderDiagram ($framework, $abbrs)
 	{
+		$n_rows = $framework['n_rows'];
+		$n_cols = $framework['n_cols'];
+
 		// output table
-		$table = '<table class="diagram" style="border-spacing: 0px; border: 0px;">'."\n";
-		for ($i = 0; $i < 2 * $framework['line_count']; $i++)
+		$table = '<table class="diagram">'."\n";
+		// create horizontal spacer row
+		// first cell is for column of vertical spacers
+		$table .= "\t<tr>\n\t\t<td></td>\n";
+		for ($i = 0; $i < $n_cols; $i++)
+			$table .= "\t\t<td class=\"".$this->css_classes['spacer-horizontal']."\"><div /></td>\n";
+		$table .= "\t</tr>\n";
+		// create diagram rows
+		for ($i = 0; $i < $n_rows; $i++)
 		{
 			// get table row spec
 			$row = array_key_exists($i, $framework) ? $framework[$i] : array ();
@@ -942,43 +989,38 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 			$line_index = $i / 2;
 
 			// output tr
-			$table .= "\t<tr>\n";
+			// first cell is for column of vertical spacers
+			$table .= "\t<tr>\n\t\t<td class=\"".$this->css_classes['spacer-vertical']."\"><div /></td>\n";
 			foreach ($row as $cell)
 			{
 				// generate cell content and update style
-
+				$cell_content = '';
 				// empty cell or connection cell
-				if (is_null($cell['abbr']))
-					$cell_content = '<div style="width: '
-						.$cell["colspan"]
-						.'em; height: '
-						.$cell["rowspan"]
-						.'em;"></div>';
-				// cell with abbreviation
-				else if (array_key_exists($line_index, $abbrs) && array_key_exists($cell['abbr'], $abbrs[$line_index]))
+				if (!isset($cell['text']))
 				{
-					$cell_content = $this->_renderWikiCalls ($abbrs[$line_index][$cell['abbr']]['content']);
-					$cell["style"] = $this->_generateBlockStyle ($abbrs[$line_index][$cell['abbr']]['params']);
+					if (isset($cell['content']))
+						$cell_content = $cell['content'];
+				}
+				// cell with abbreviation
+				else if (array_key_exists($line_index, $abbrs) && array_key_exists($cell['text'], $abbrs[$line_index]))
+				{
+					$cell_content = $this->_renderWikiCalls ($abbrs[$line_index][$cell['text']]['content']);
+					$cell['style'] = $this->_generateBlockStyle ($abbrs[$line_index][$cell['text']]['params']);
 				}
 				// cell with unrecognized abbreviation
 				else
-				{
-					$cell_content = $cell['abbr'];
-					$cell["style"] = $this->_generateBlockStyle ($this->default_abbr_params);
-				}
+					$cell_content = $cell['text'];
 
 				// output td
 				$table .= "\t\t<td"
-					.($cell["colspan"] != 1 ? ' colspan="'.$cell["colspan"].'"' : '')
-					.($cell["rowspan"] != 1 ? ' rowspan="'.$cell["rowspan"].'"' : '')
-					.($cell["style"] != "" ? ' style="'.$cell["style"].'"' : '')
-					.">"
+					.(isset($cell['classes']) && !empty($cell['classes']) ? ' class="'.implode(' ', $cell['classes']).'"' : '')
+					.($cell['style'] != '' ? ' style="'.$cell["style"].'"' : '')
+					.(isset($cell['colspan']) ? ' colspan="'.$cell["colspan"].'"' : '')
+					.(isset($cell['rowspan']) ? ' rowspan="'.$cell["rowspan"].'"' : '')
+					.'>'
 					.$cell_content
 					."</td>\n";
 			}
-			// prevent empty tr tag
-			if (!count($row))
-				$table .= "\t\t<td></td>\n";
 			$table .= "\t</tr>\n";
 		}
 		$table .= "</table>\n";
@@ -987,18 +1029,17 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	}
 
 	/**
-	 * Generate CSS style for abbreviation block.
+	 * Generate CSS style for diagram block.
 	 *
-	 * @param array $params supported block parameters
+	 * @param array $params supported block CSS parameters
 	 * @return string css style
-	 * @see default_abbr_params for list of supported block parameters
 	 */
 	function _generateBlockStyle ($params)
 	{
-		return "text-align: {$params['text-align']};"
-			." padding: {$params['padding']};"
-			." border: {$params['border-width']} {$params['border-style']} {$params['border-color']};"
-			.(!is_null($params['background-color']) ? " background-color: {$params['background-color']};" : '');
+		$css_props = array();
+		foreach ($params as $param => $value)
+			$css_props[] = "$param: $value;";
+		return implode(' ', $css_props);
 	}
 
 	/**

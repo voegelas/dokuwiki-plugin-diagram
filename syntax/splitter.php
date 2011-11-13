@@ -7,14 +7,14 @@
  * Component also provides simple match handling.
  * Splitter can't be used without Main because we need to move wiki calls for abbreviations from their places to boxes.
  *
- * Tested with DokuWiki-20090214. Should also work with 20091225, 20080505 and 20070626 releases.
- * Doesn't operate properly with 20061106 release due to its bugs.
+ * Should work with any DokuWiki version >= 20070626.
+ * Tested with DokuWiki versions 20090214, 20091225, 20110525a.
  *
  * Install to lib/plugins/diagram/syntax/splitter.php.
  *
  * @license GPL 2 (http://www.gnu.org/licenses/gpl.html)
  * @author Nikita Melnichenko [http://nikita.melnichenko.name]
- * @copyright Copyright 2007-2010, Nikita Melnichenko
+ * @copyright Copyright 2007-2011, Nikita Melnichenko
  */
 
 // includes
@@ -53,8 +53,8 @@ class syntax_plugin_diagram_splitter extends DokuWiki_Syntax_Plugin
 	{
 		return array(
 			'author' => 'Nikita Melnichenko',
-			'date'   => '2010-02-05',
-			'name'   => 'Diagram plugin, Splitter component',
+			'date'   => '2011-11-14',
+			'name'   => 'Diagram plugin, Splitter component (experimental branch)',
 			'desc'   => 'Parses diagram content',
 			'url'    => 'http://nikita.melnichenko.name/projects/dokuwiki-diagram/index.php'
 			);
@@ -138,9 +138,9 @@ class syntax_plugin_diagram_splitter extends DokuWiki_Syntax_Plugin
 	{
 		$this->Lexer->addPattern('\n',
 			'plugin_diagram_splitter');
-		$this->Lexer->addPattern('\|[A-Za-z]+=',
+		$this->Lexer->addPattern('\|[A-Za-z0-9_]+=',
 			'plugin_diagram_splitter');
-		$this->Lexer->addPattern('\|[A-Za-z]+\{[^{}]*\}=',
+		$this->Lexer->addPattern('\|[A-Za-z0-9_]+\{[^{}]*\}=',
 			'plugin_diagram_splitter');
 		$this->Lexer->addPattern('\|[^|=\n]*',
 			'plugin_diagram_splitter');
@@ -169,7 +169,7 @@ class syntax_plugin_diagram_splitter extends DokuWiki_Syntax_Plugin
 				$res['type'] = 'abbr eval';
 				// delete first '|', last '=' and whitespase
 				$abbr_and_params = trim(substr($match, 1, -1));
-				if (preg_match ('/([A-Za-z]+)\{([^{}]*)\}/', $abbr_and_params, $regs))
+				if (preg_match ('/([A-Za-z0-9_]+)\{([^{}]*)\}/', $abbr_and_params, $regs))
 				{
 					$res['abbr'] = $regs[1];
 					$res['params'] = $regs[2];
