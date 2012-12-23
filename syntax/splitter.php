@@ -8,13 +8,13 @@
  * Splitter can't be used without Main because we need to move wiki calls for abbreviations from their places to boxes.
  *
  * Should work with any DokuWiki version >= 20070626.
- * Tested with DokuWiki versions 20090214, 20091225, 20110525a.
+ * Tested with DokuWiki versions 20090214, 20091225, 20110525a, 20121013.
  *
  * Install to lib/plugins/diagram/syntax/splitter.php.
  *
  * @license GPL 2 (http://www.gnu.org/licenses/gpl.html)
  * @author Nikita Melnichenko [http://nikita.melnichenko.name]
- * @copyright Copyright 2007-2011, Nikita Melnichenko
+ * @copyright Copyright 2007-2012, Nikita Melnichenko
  */
 
 // includes
@@ -53,8 +53,8 @@ class syntax_plugin_diagram_splitter extends DokuWiki_Syntax_Plugin
 	{
 		return array(
 			'author' => 'Nikita Melnichenko',
-			'date'   => '2011-11-14',
-			'name'   => 'Diagram plugin, Splitter component (experimental branch)',
+			'date'   => '2012-12-23',
+			'name'   => 'Diagram plugin, Splitter component',
 			'desc'   => 'Parses diagram content',
 			'url'    => 'http://nikita.melnichenko.name/projects/dokuwiki-diagram/index.php'
 			);

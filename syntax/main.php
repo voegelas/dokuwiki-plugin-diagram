@@ -3,16 +3,16 @@
  * DokuWiki plugin Diagram, Main component.
  *
  * Constructs diagrams.
- * See full description at http://nikita.melnichenko.name/projects/dokuwiki-diagram/.
+ * See a full description at http://nikita.melnichenko.name/projects/dokuwiki-diagram/.
  *
  * Should work with any DokuWiki version >= 20070626.
- * Tested with DokuWiki versions 20090214, 20091225, 20110525a.
+ * Tested with DokuWiki versions 20090214, 20091225, 20110525a, 20121013.
  *
  * Install to lib/plugins/diagram/syntax/main.php.
  *
  * @license GPL 2 (http://www.gnu.org/licenses/gpl.html)
  * @author Nikita Melnichenko [http://nikita.melnichenko.name]
- * @copyright Copyright 2007-2011, Nikita Melnichenko
+ * @copyright Copyright 2007-2012, Nikita Melnichenko
  *
  * Thanks for help to:
  * - Anika Henke <anika[at]selfthinker.org>
@@ -82,8 +82,8 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	{
 		return array(
 			'author' => 'Nikita Melnichenko',
-			'date'   => '2011-11-14',
-			'name'   => 'Diagram plugin, Main component (experimental branch)',
+			'date'   => '2012-12-23',
+			'name'   => 'Diagram plugin, Main component',
 			'desc'   => 'Constructs diagrams',
 			'url'    => 'http://nikita.melnichenko.name/projects/dokuwiki-diagram/index.php'
 			);
