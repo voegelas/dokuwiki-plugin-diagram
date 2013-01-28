@@ -7,6 +7,14 @@ table.diagram
 	border: 0px;
 }
 
+/* Fix IE 7 */
+* + html table.diagram
+{
+	border-collapse: collapse;
+	border-spacing: 0px;
+	border: 0px;
+}
+
 table.diagram td
 {
 	padding: 0px;
@@ -38,9 +46,17 @@ table.diagram td.d-b
 	padding: 0.25em;
 }
 
+
 table.diagram td.d-brs
 {
 	border-right: 1px solid black;
+}
+
+/* Fix IE 7 */
+* + table.diagram td.d-brs
+{
+	border-top: 1px solid transparent;
+	border-left: 1px solid transparent;
 }
 
 table.diagram td.d-brd
@@ -52,6 +68,7 @@ table.diagram td.d-bbs
 {
 	border-bottom: 1px solid black;
 }
+
 
 table.diagram td.d-bbd
 {

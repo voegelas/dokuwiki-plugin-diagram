@@ -53,7 +53,7 @@ class syntax_plugin_diagram_splitter extends DokuWiki_Syntax_Plugin
 	{
 		return array(
 			'author' => 'Nikita Melnichenko',
-			'date'   => '2012-12-23',
+			'date'   => '2013-01-28',
 			'name'   => 'Diagram plugin, Splitter component',
 			'desc'   => 'Parses diagram content',
 			'url'    => 'http://nikita.melnichenko.name/projects/dokuwiki-diagram/index.php'

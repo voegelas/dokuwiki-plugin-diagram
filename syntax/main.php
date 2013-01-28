@@ -82,7 +82,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	{
 		return array(
 			'author' => 'Nikita Melnichenko',
-			'date'   => '2012-12-23',
+			'date'   => '2013-01-28',
 			'name'   => 'Diagram plugin, Main component',
 			'desc'   => 'Constructs diagrams',
 			'url'    => 'http://nikita.melnichenko.name/projects/dokuwiki-diagram/index.php'
