@@ -150,7 +150,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	 * @param Doku_Handler $handler
 	 * @return array data for rendering
 	 */
-	function handle ($match, $state, $pos, &$handler)
+	function handle ($match, $state, $pos, Doku_Handler $handler)
 	{
 		// strip tags
 		$tag_name_len = strlen($this->tag_name);
@@ -179,7 +179,7 @@ class syntax_plugin_diagram_main extends DokuWiki_Syntax_Plugin
 	 * @param array $data data from handler
 	 * @return bool
 	 */
-	function render ($mode, &$renderer, $data)
+	function render ($mode, Doku_Renderer $renderer, $data)
 	{
 		if ($mode != 'xhtml')
 			return false;

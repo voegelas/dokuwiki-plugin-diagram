@@ -157,7 +157,7 @@ class syntax_plugin_diagram_splitter extends DokuWiki_Syntax_Plugin
 	 * @param Doku_Handler $handler
 	 * @return array data for rendering
 	 */
-	function handle ($match, $state, $pos, &$handler)
+	function handle ($match, $state, $pos, Doku_Handler $handler)
 	{
 		$res = array();
 		if ($state == DOKU_LEXER_MATCHED)
@@ -187,5 +187,13 @@ class syntax_plugin_diagram_splitter extends DokuWiki_Syntax_Plugin
 		if ($state == DOKU_LEXER_UNMATCHED)
 			$res['text'] = $match;
 		return $res;
+	}
+
+	function render ($mode, Doku_Renderer $renderer, $data)
+	{
+		if ($mode != 'xhtml')
+			return false;
+
+		return true;
 	}
 }
